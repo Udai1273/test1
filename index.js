@@ -1,56 +1,76 @@
 const express = require("express");
+const cors = require("cors");
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 // Middleware to parse JSON requests
 app.use(express.json());
+app.use(cors()); // Enable CORS to allow frontend requests
 
-// ✅ GET request for "/bfhl"
+// User details (static as per example)
+const USER_DETAILS = {
+  user_id: "john_doe_17091999",
+  email: "john@xyz.com",
+  roll_number: "ABCD123",
+};
+
+// Route: GET /bfhl
 app.get("/bfhl", (req, res) => {
   res.status(200).json({ operation_code: 1 });
 });
 
-// ✅ POST request for "/bfhl"
+// Route: POST /bfhl
 app.post("/bfhl", (req, res) => {
-  try {
-    const { name, dob, email, roll_number, data } = req.body;
+  console.log("Received request body:", req.body);
 
-    if (!name || !dob || !email || !roll_number || !data) {
-      return res
-        .status(400)
-        .json({ is_success: false, message: "Missing required fields" });
-    }
-
-    // Extract numbers and alphabets from data array
-    const numbers = data.filter((item) => typeof item === "number");
-    const alphabets = data.filter((item) => typeof item === "string");
-
-    // Format user ID
-    const user_id =
-      name.toLowerCase().replace(/ /g, "_") + "_" + dob.replace(/-/g, "");
-
-    // Return response
-    res.json({
-      is_success: true,
-      user_id,
-      email,
-      college_roll_number: roll_number,
-      numbers,
-      alphabets,
-    });
-  } catch (error) {
-    res
-      .status(500)
-      .json({ is_success: false, message: "Internal server error" });
+  // Validate input
+  if (!req.body || !req.body.data || !Array.isArray(req.body.data)) {
+    return res
+      .status(400)
+      .json({ error: "Invalid input, expected JSON with 'data' array" });
   }
+
+  const inputData = req.body.data;
+  let numbers = [];
+  let alphabets = [];
+
+  // Process the input array
+  inputData.forEach((item) => {
+    if (!isNaN(item)) {
+      numbers.push(item);
+    } else if (
+      typeof item === "string" &&
+      item.length === 1 &&
+      /^[A-Za-z]$/.test(item)
+    ) {
+      alphabets.push(item);
+    }
+  });
+
+  // Determine the highest alphabet (last in A-Z order, case-insensitive)
+  let highestAlphabet = [];
+  if (alphabets.length > 0) {
+    highestAlphabet.push(
+      alphabets.sort((a, b) =>
+        b.localeCompare(a, undefined, { sensitivity: "base" })
+      )[0]
+    );
+  }
+
+  // Construct response
+  const response = {
+    is_success: true,
+    ...USER_DETAILS,
+    numbers,
+    alphabets,
+    highest_alphabet: highestAlphabet,
+  };
+
+  res.status(200).json(response);
 });
 
-// ✅ Default route for "/"
-app.get("/", (req, res) => {
-  res.send("Welcome to my API! Try /bfhl for responses.");
-});
-
-// Start the server
+// Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
