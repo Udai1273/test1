@@ -1,25 +1,35 @@
 const express = require("express");
-const cors = require("cors");
-
 const app = express();
-app.use(cors());
+const PORT = process.env.PORT || 3000;
+
+// Middleware to parse JSON requests
 app.use(express.json());
 
-// POST route
+// ✅ GET request for "/bfhl"
+app.get("/bfhl", (req, res) => {
+  res.status(200).json({ operation_code: 1 });
+});
+
+// ✅ POST request for "/bfhl"
 app.post("/bfhl", (req, res) => {
   try {
     const { name, dob, email, roll_number, data } = req.body;
-    if (!name || !dob || !data) {
+
+    if (!name || !dob || !email || !roll_number || !data) {
       return res
         .status(400)
-        .json({ is_success: false, message: "Missing fields" });
+        .json({ is_success: false, message: "Missing required fields" });
     }
-    const user_id = `${name.replace(/\s/g, "_").toLowerCase()}_${dob.replace(
-      /-/g,
-      ""
-    )}`;
-    const numbers = data.filter((item) => !isNaN(item));
-    const alphabets = data.filter((item) => /^[A-Za-z]+$/.test(item));
+
+    // Extract numbers and alphabets from data array
+    const numbers = data.filter((item) => typeof item === "number");
+    const alphabets = data.filter((item) => typeof item === "string");
+
+    // Format user ID
+    const user_id =
+      name.toLowerCase().replace(/ /g, "_") + "_" + dob.replace(/-/g, "");
+
+    // Return response
     res.json({
       is_success: true,
       user_id,
@@ -29,17 +39,18 @@ app.post("/bfhl", (req, res) => {
       alphabets,
     });
   } catch (error) {
-    res.status(500).json({ is_success: false, message: error.message });
+    res
+      .status(500)
+      .json({ is_success: false, message: "Internal server error" });
   }
 });
 
-// GET route
-app.get("/bfhl", (req, res) => {
-  res.json({ operation_code: 1 });
+// ✅ Default route for "/"
+app.get("/", (req, res) => {
+  res.send("Welcome to my API! Try /bfhl for responses.");
 });
 
-// Start server
-const PORT = process.env.PORT || 3000;
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
